@@ -24,7 +24,7 @@ fi
 # --- 3. Remove tmux config lines ---
 if [ -f "$TMUX_CONF" ]; then
   TMP="$(mktemp)"
-  grep -v '@claude_ready\|# Claude turn-complete indicator' "$TMUX_CONF" > "$TMP" || true
+  grep -v '@claude_ready\|# Claude turn-complete indicator\|# Clear indicator when switching' "$TMUX_CONF" > "$TMP" || true
   mv "$TMP" "$TMUX_CONF"
   echo "  Removed indicator from $TMUX_CONF"
 fi
@@ -34,6 +34,7 @@ if tmux info &>/dev/null; then
   tmux list-windows -a -F '#{window_id}' | while read -r wid; do
     tmux set-option -wu -t "$wid" @claude_ready 2>/dev/null || true
   done
+  tmux set-hook -gu after-select-window 2>/dev/null || true
   tmux source-file "$TMUX_CONF" 2>/dev/null || true
   echo "  Cleared tmux state and reloaded config"
 fi
