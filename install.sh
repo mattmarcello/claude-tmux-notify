@@ -54,9 +54,11 @@ if [ ! -f "$TMUX_CONF" ]; then
   touch "$TMUX_CONF"
 fi
 
+TMUX_HOOK="set-hook -g after-select-window 'set-option -wu @claude_ready'"
+
 if ! grep -qF '@claude_ready' "$TMUX_CONF"; then
-  printf '\n# Claude turn-complete indicator\n%s\n' "$TMUX_LINE" >> "$TMUX_CONF"
-  echo "  Added window-status-format to $TMUX_CONF"
+  printf '\n# Claude turn-complete indicator\n%s\n# Clear indicator when switching to a window\n%s\n' "$TMUX_LINE" "$TMUX_HOOK" >> "$TMUX_CONF"
+  echo "  Added window-status-format and auto-clear hook to $TMUX_CONF"
 else
   echo "  window-status-format already in $TMUX_CONF (skipped)"
 fi
