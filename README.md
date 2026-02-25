@@ -26,22 +26,19 @@ Or ask Claude Code:
 
 ## How it works
 
-Two [Claude Code hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) drive a tmux window option:
+A Claude Code [Stop hook](https://docs.anthropic.com/en/docs/claude-code/hooks) and a tmux window option (`@claude_ready`) work together:
 
-| Hook | Action | Meaning |
-|------|--------|---------|
-| `Stop` | sets `@claude_ready` on the window | Claude finished — waiting for input |
-| `UserPromptSubmit` | clears `@claude_ready` | User submitted a prompt — Claude is working |
-
-tmux's `window-status-format` checks `@claude_ready` and renders a yellow highlight when set.
+1. **Stop hook** — when Claude finishes a turn, sets `@claude_ready` on the window (skipped if you're already looking at it)
+2. **`window-status-format`** — tmux renders a yellow highlight on windows where `@claude_ready` is set
+3. **`after-select-window` hook** — clears `@claude_ready` when you switch to the window
 
 ### Files touched
 
 | File | Change |
 |------|--------|
 | `~/.claude/claude-notify.sh` | New — sets `@claude_ready` on the tmux window |
-| `~/.claude/settings.json` | Adds `Stop` and `UserPromptSubmit` hooks |
-| `~/.tmux.conf` | Appends one `window-status-format` line |
+| `~/.claude/settings.json` | Adds `Stop` hook |
+| `~/.tmux.conf` | Appends `window-status-format` + `after-select-window` hook |
 
 ## Uninstall
 

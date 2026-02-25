@@ -31,13 +31,6 @@ settings.hooks.Stop = [{
     async: true
   }]
 }];
-settings.hooks.UserPromptSubmit = [{
-  matcher: "",
-  hooks: [{
-    type: "command",
-    command: "[ -n \"$TMUX_PANE\" ] && tmux set-option -wu -t \"$TMUX_PANE\" @claude_ready 2>/dev/null; true"
-  }]
-}];
 fs.writeFileSync(process.argv[1], JSON.stringify(settings, null, 2) + "\n");
 ' "$SETTINGS"
 echo "  Configured hooks in $SETTINGS"

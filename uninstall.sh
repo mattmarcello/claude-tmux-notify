@@ -20,7 +20,6 @@ if [ -f "$SETTINGS" ]; then
   const settings = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
   if (settings.hooks) {
     delete settings.hooks.Stop;
-    delete settings.hooks.UserPromptSubmit;
     if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
   }
   fs.writeFileSync(process.argv[1], JSON.stringify(settings, null, 2) + "\n");
