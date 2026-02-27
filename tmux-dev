@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# tmux-dev: manage dev processes in named tmux panes.
+#
+# Usage:
+#   tmux-dev <name> <command...>   Start a process in a new pane
+#   tmux-dev logs <name> [-n N]    Read last N lines (default 50)
+#   tmux-dev kill <name>           Send ctrl+c to the pane
+#   tmux-dev list                  Show all dev panes
+#
+# Examples:
+#   tmux-dev be pnpm dev:be
+#   tmux-dev logs be
+#   tmux-dev kill be
+
+set -euo pipefail
+
+PREFIX="dev"
+
+find_pane() {
+  tmux list-panes -a -F '#{pane_title} #{pane_id}' 2>/dev/null \
+    | grep "^${PREFIX}-$1 " | awk '{print $2}' | head -1 || true
+}
+
+case "${1:-}" in
+  ""|--help|-h)
+    sed -n '2,/^$/s/^# //p' "$0"
+    exit 0
+    ;;
+
+  logs)
+    [ -z "${2:-}" ] && echo "Usage: tmux-dev logs <name> [-n N]" && exit 1
+    pane=$(find_pane "$2")
+    [ -z "$pane" ] && echo "No dev pane named '$2'" && exit 1
+    lines="${4:-50}"
+    [[ "${3:-}" == "-n" ]] && lines="$4"
+    tmux capture-pane -t "$pane" -p -S "-${lines}"
+    ;;
+
+  kill)
+    [ -z "${2:-}" ] && echo "Usage: tmux-dev kill <name>" && exit 1
+    pane=$(find_pane "$2")
+    [ -z "$pane" ] && echo "No dev pane named '$2'" && exit 1
+    tmux send-keys -t "$pane" C-c
+    echo "Sent ctrl+c to $2 ($pane)"
+    ;;
+
+  list)
+    tmux list-panes -a -F '#{pane_title} #{pane_id} #{pane_current_command}' 2>/dev/null \
+      | { grep "^${PREFIX}-" || true; } \
+      | while read -r title pane_id cmd; do
+          name="${title#${PREFIX}-}"
+          echo "$name  →  $pane_id  ($cmd)"
+        done
+    ;;
+
+  *)
+    [ -z "$TMUX" ] && echo "Not in a tmux session" && exit 1
+    name="$1"; shift
+    [ $# -eq 0 ] && echo "Usage: tmux-dev <name> <command...>" && exit 1
+
+    # Kill existing pane with same name if present, remembering its window
+    target=""
+    existing=$(find_pane "$name")
+    if [ -n "$existing" ]; then
+      target=$(tmux display-message -p -t "$existing" '#{window_id}')
+      tmux send-keys -t "$existing" C-c
+      sleep 0.5
+      tmux kill-pane -t "$existing" 2>/dev/null || true
+    fi
+
+    # Start new pane (-P prints the stable pane id like %42)
+    # tmux split-window runs via the tmux server, which doesn't inherit the
+    # calling shell's env. Snapshot current env into tmux so the new pane gets it.
+    while IFS='=' read -r key val; do
+      [[ -n "$key" && "$key" != *[^A-Za-z0-9_]* ]] && tmux set-environment "$key" "$val"
+    done < <(env)
+    # Split relative to the caller's pane (not the focused window, which may
+    # be in a different project). $TMUX_PANE is set by tmux for every shell.
+    split_target="${target:-$TMUX_PANE}"
+    pane_id=$(tmux split-window -v -l 20 -d -c "$(pwd)" -t "$split_target" -P -F '#{pane_id}' "$*")
+    tmux select-pane -t "$pane_id" -T "${PREFIX}-${name}"
+    echo "Started '$name' in $pane_id"
+    ;;
+esac
